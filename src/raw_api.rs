@@ -1,4 +1,4 @@
-#![allow(bad_style)]
+#![allow(bad_style, missing_documentation)]
 
 use Version;
 use libc::{c_char, c_float, c_int, c_void, uint32_t, uint64_t};
