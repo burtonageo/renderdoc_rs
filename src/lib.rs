@@ -16,7 +16,9 @@ use libloading::{Library, Symbol};
 use raw_api::{RENDERDOC_API_1_0_0, RENDERDOC_API_1_0_1, RENDERDOC_API_1_0_2,
               RENDERDOC_API_1_1_0, RENDERDOC_API_1_1_1, RENDERDOC_InputButton,
               RENDERDOC_OverlayBits, RENDERDOC_Version};
+use std::borrow::Cow;
 use std::error::Error as StdError;
+use std::ffi::{CStr, CString, NulError};
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use std::{fmt, io, mem, ptr};
@@ -210,17 +212,6 @@ impl RenderDoc {
         Err(CreateError::UnsupportedPlatform)
     }
 
-    /// Attempts to shutdown the `renderdoc` library.
-    ///
-    /// # Safety
-    ///
-    /// If any graphics APIs have been called, then this function will result
-    /// in undefined behaviour.
-    pub unsafe fn shutdown(self) {
-        (self.api.Shutdown)();
-        LIB_INITIALIZED.store(false, Ordering::SeqCst);
-    }
-
     /// Get the api version of the linked `renderdoc` library.
     ///
     /// The format of the return value is `(major, minor, patch)`.
@@ -250,6 +241,41 @@ impl RenderDoc {
         unsafe {
             (self.api.SetCaptureKeys)(ptr, len);
         }
+    }
+
+    /// Attempts to shutdown the `renderdoc` library.
+    ///
+    /// # Safety
+    ///
+    /// If any graphics APIs have been called, then this function will result
+    /// in undefined behaviour.
+    pub unsafe fn shutdown(self) {
+        (self.api.Shutdown)();
+        LIB_INITIALIZED.store(false, Ordering::SeqCst);
+    }
+
+    ///
+    pub fn unload_crash_handler(&mut self) {
+        unsafe {
+            (self.api.UnloadCrashHandler)();
+        }
+    }
+
+    ///
+    pub fn set_log_file_path_template(&mut self, log_file_path_template: &str) -> StdResult<(), NulError> {
+        let log_file_path_template = CString::new(log_file_path_template)?;
+        unsafe {
+            (self.api.SetLogFilePathTemplate)(log_file_path_template.as_ptr());
+        }
+        Ok(())
+    }
+
+    ///
+    pub fn get_log_file_path_template(&self) -> Cow<str> {
+        unsafe {
+            CStr::from_ptr((self.api.GetLogFilePathTemplate)()).to_string_lossy()
+        }
+
     }
 
     /// Set the Window and Device which you want this `renderdoc` instance to inspect.
@@ -303,6 +329,8 @@ impl RenderDoc {
         self.api
     }
 }
+
+pub type StdResult<T, E> = ::std::result::Result<T, E>;
 
 /// Error to enumerate possible fail states when constructing the `RenderDoc` instance.
 #[derive(Debug)]
@@ -366,7 +394,7 @@ impl From<Error> for CreateError {
     }
 }
 
-pub type CreateResult<T> = ::std::result::Result<T, CreateError>;
+pub type CreateResult<T> = StdResult<T, CreateError>;
 
 /// Represents a generic error which may occur when using the `renderdoc` api.
 ///
@@ -415,7 +443,7 @@ impl StdError for Error {
     }
 }
 
-pub type Result<T> = ::std::result::Result<T, ::Error>;
+pub type Result<T> = StdResult<T, ::Error>;
 
 #[cfg(test)]
 mod tests {
