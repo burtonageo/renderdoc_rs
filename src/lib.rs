@@ -165,8 +165,6 @@ impl fmt::Debug for RenderDocApi {
 pub struct RenderDoc {
     dylib: Library,
     api: RENDERDOC_API_1_1_1,
-    // It is undefined behaviour to call RENDERDOC_Shutdown after other renderdoc functions have
-    // been called, so record this here.
     _not_threadsafe: PhantomData<*mut ()>,
 }
 
