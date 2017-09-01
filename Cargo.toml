@@ -3,4 +3,11 @@ name = "renderdoc"
 version = "0.1.0"
 authors = ["George Burton <burtonageo@gmail.com>"]
 
+[features]
+use-winit = ["winit"] 
+
 [dependencies]
+bitflags = "0.9"
+libc = "0.2"
+libloading = "0.4.0"
+winit = { version = "0.7", optional = true }
